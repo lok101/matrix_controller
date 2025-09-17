@@ -1,6 +1,6 @@
 from typing import Any
 
-from src.infrastructure.external_clients.kit_api_client import KitAPIClient, Endpoints, RESULT_CODE_KEY, ResultCodes
+from src.external_clients.kit_api_client import KitAPIClient, Endpoints, RESULT_CODE_KEY, ResultCodes
 from src.services.matrix_service import IMatrixRepository, Matrix
 
 
@@ -12,7 +12,7 @@ def _as_dict(matrix: Matrix) -> dict[str, Any]:
                 'LineNumber': position.number,
                 'ChoiceNumber': position.number,
                 'GoodsName': position.product_name,
-                'Price': position.price,
+                'Price2': position.price,
                 'MaxCount': position.capacity,
             }
             for position in matrix.cells

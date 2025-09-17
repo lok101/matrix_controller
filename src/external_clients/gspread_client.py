@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Mapping, Any
 
 import gspread
+from gspread import utils
 
 _client = gspread.service_account()
 _headers = ['name']
@@ -18,6 +19,9 @@ class GspreadClient(ABC):
 
     @abstractmethod
     def get_range_data(self, range_name: str) -> list[list[Any]]: pass
+
+    @abstractmethod
+    def get_records(self, range_name: str, headers: list[str]) -> list[Mapping]: pass
 
 
 class GspreadClientImpl(GspreadClient):
@@ -38,6 +42,28 @@ class GspreadClientImpl(GspreadClient):
     def get_range_data(self, range_name: str) -> range:
         response = self._spreadsheet.values_batch_get([range_name])
         return response['valueRanges'][0]['values']
+
+    def get_records(self, range_name: str, headers: list[str]) -> list[Mapping]:
+        cells = self._get_range_cells(range_name)
+
+        if not cells:
+            raise Exception('В переданном диапазоне не найдены значения.')
+
+        column_amount = len(cells[0])
+        headers_amount = len(headers)
+
+        if column_amount != headers_amount:
+            raise Exception(
+                f'Количество заголовков {headers_amount} - не равно количеству столбцов диапазона {column_amount}.')
+
+        records = utils.to_records(headers, cells)
+        return records
+
+    def _get_range_cells(self, range_name: str) -> list[list[int | str]]:
+        response = self._spreadsheet.values_batch_get([range_name])
+        cells_data = response['valueRanges'][0]['values']
+        cleared_data = self._clear_records(cells_data)
+        return cleared_data
 
     @staticmethod
     def _map_to_records(headers: list[str], values: list[Mapping]):
