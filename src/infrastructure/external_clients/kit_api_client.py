@@ -13,10 +13,17 @@ from dotenv import load_dotenv
 
 BASE_URL = "https://api2.kit-invest.ru/APIService.svc"
 
+result_code_messages = {
+    27: 'Превышен лимит запросов.'
+}
+
 
 class Endpoints(enum.StrEnum):
     ADD_GOOD = 'AddGood'
+    ADD_GOODS = 'AddGoods'
     GET_GOODS = 'GetGoods'
+
+    CREATE_MATRIX = 'CreatePiecesMatrix'
 
 
 class ResultCodes(IntEnum):

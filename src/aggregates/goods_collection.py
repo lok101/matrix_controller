@@ -1,4 +1,4 @@
-from src.dtos import Good
+from src.entities import Good
 
 
 class GoodsCollection:
@@ -10,7 +10,7 @@ class GoodsCollection:
         instance = cls()
 
         for item in data:
-            good = Good(**item)
+            good = Good.model_validate(item)
             instance._goods[good.name] = good
 
         return instance
