@@ -1,18 +1,14 @@
-import enum
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-
-
-class SnackMatrixId(enum.StrEnum):
-    ugmk_1stage_blue = 'угмк_kv12'
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
 class Cell:
     product_name: str
+    price_cash: int
     price: int
     number: int
-    capacity: int
+    capacity: int | None = field(default=None)
 
 
 @dataclass(frozen=True)
@@ -30,17 +26,10 @@ class IMatrixRepository(ABC):
     async def add(self, matrix: Matrix): pass
 
 
-class ICellRepository(ABC):
-    @abstractmethod
-    def get_all(self, matrix_type: SnackMatrixId) -> list[Cell]: pass
-
-
 class MatrixService:
-    def __init__(self, cell_repository: ICellRepository, matrix_repository: IMatrixRepository):
-        self._cell_repo = cell_repository
+    def __init__(self, matrix_repository: IMatrixRepository):
         self._matrix_repository = matrix_repository
 
-    async def create_matrix(self, matrix_name: str, matrix_type: SnackMatrixId):
-        matrix_cells = self._cell_repo.get_all(matrix_type)
+    async def create_matrix(self, matrix_name: str, matrix_cells: list[Cell]):
         matrix = create_matrix(matrix_name, matrix_cells)
         await self._matrix_repository.add(matrix)

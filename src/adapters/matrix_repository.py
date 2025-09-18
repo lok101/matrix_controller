@@ -13,6 +13,7 @@ def _as_dict(matrix: Matrix) -> dict[str, Any]:
                 'ChoiceNumber': position.number,
                 'GoodsName': position.product_name,
                 'Price2': position.price,
+                'Price': position.price,
                 'MaxCount': position.capacity,
             }
             for position in matrix.cells
