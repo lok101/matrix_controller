@@ -1,0 +1,1 @@
+MIN_SALE_PRICE = 39
