@@ -18,7 +18,11 @@ class ResultCodes(IntEnum):
     TOO_MANY_REQUEST = 27
 
 
-@rate_limit(1, 10)
+class APILimitError(Exception):
+    pass
+
+
+@rate_limit(5, 50)
 class KitVendingAPI:
     def __init__(self, login: str, password: str, company_id: str, timestamp_provider: TimestampAPI):
         self._timestamp_provider = timestamp_provider
@@ -122,6 +126,9 @@ class KitVendingAPI:
                     response.raise_for_status()
                     response_data = await response.json()
                     result_code = response_data['ResultCode']
+
+                    if result_code == ResultCodes.TOO_MANY_REQUEST:
+                        raise APILimitError("Лимит запросов превышен.")
 
                     if result_code != ResultCodes.SUCCESS:
                         message = response_data["ErrorMessage"]
