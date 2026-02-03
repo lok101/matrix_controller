@@ -1,0 +1,2 @@
+class UploadMatrixError(Exception):
+    pass

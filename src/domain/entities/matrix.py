@@ -28,4 +28,4 @@ class Matrix:
     cells: list[MatrixCell]
 
     def get_matrix_full_name(self):
-        return f'{self.name} | {date.today().strftime('%d.%m.%y')} | {self.machine_model}'
+        return f'{self.name} __ {date.today().strftime('%y.%m.%d')} __ {self.machine_model}'

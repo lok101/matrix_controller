@@ -22,7 +22,7 @@ class APILimitError(Exception):
     pass
 
 
-@rate_limit(5, 50)
+@rate_limit(1, 15)
 class KitVendingAPI:
     def __init__(self, login: str, password: str, company_id: str, timestamp_provider: TimestampAPI):
         self._timestamp_provider = timestamp_provider
