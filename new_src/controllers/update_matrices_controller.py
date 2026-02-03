@@ -1,11 +1,14 @@
 import asyncio
 import logging
+from dataclasses import dataclass
 from typing import Awaitable
+
+from beartype import beartype
 
 from new_src.app.use_cases.upload_machine_matrix import UploadAndApplyMatrixUseCase
 from new_src.domain.entites.matrix import Matrix
 from new_src.domain.entites.vending_machine import VendingMachine
-from new_src.domain.ports.get_matrix_data import GetMatricesPort
+from new_src.domain.ports.get_all_matrices import GetAllMatricesPort
 from new_src.domain.repositories.vending_machine_repository import VendingMachineRepository
 from new_src.domain.value_objects.ids.vending_machine_id import VMId
 from new_src.infrastructure.interactive_matrices_selector import InteractiveSelector
@@ -13,8 +16,10 @@ from new_src.infrastructure.interactive_matrices_selector import InteractiveSele
 logger = logging.getLogger("__main__")
 
 
+@beartype
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SelectAndUpdateMatricesController:
-    get_all_matrices: GetMatricesPort
+    get_all_matrices: GetAllMatricesPort
     interactive_selector: InteractiveSelector
 
     vending_machine_repository: VendingMachineRepository
@@ -65,3 +70,15 @@ class SelectAndUpdateMatricesController:
             logger.info("Загрузка матриц завершена успешно.")
 
     def _get_vending_machines(self, machines_ids: list[VMId]) -> list[VendingMachine]:
+        res: list[VendingMachine] = []
+
+        for _id in machines_ids:
+            vm: VendingMachine | None = self.vending_machine_repository.get_by_id(_id)
+
+            if vm is None:
+                logger.error(f"Не была получена машина с Id: {_id.value}.")
+                continue
+
+            res.append(vm)
+
+        return res

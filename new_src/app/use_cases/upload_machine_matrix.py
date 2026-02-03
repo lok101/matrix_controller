@@ -3,14 +3,12 @@ from dataclasses import dataclass
 from new_src.domain.entites.matrix import Matrix
 from new_src.domain.entites.vending_machine import VendingMachine
 from new_src.domain.exceptions import UploadMatrixError
-from new_src.domain.ports.get_matrix_data import GetMatricesPort
 from new_src.domain.ports.upload_machine_matrix import UploadMatrixPort
 from new_src.domain.value_objects.ids.matrix_kit_id import MatrixKitId
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UploadAndApplyMatrixUseCase:
-    get_matrix_data_port: GetMatricesPort
     upload_matrix_port: UploadMatrixPort
 
     async def execute(self, matrix: Matrix, machines: list[VendingMachine]):
