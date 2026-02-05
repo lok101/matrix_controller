@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from beartype import beartype
@@ -7,6 +8,8 @@ from kit_api.enums import VendingMachineCommand, ResultCode
 from src.domain.entites.vending_machine import VendingMachine
 from src.domain.ports.download_matrix_to_vending_machine import DownloadMatrixToVendingMachinePort
 from src.domain.value_objects.ids.vending_machine_kit_id import VMKitId
+
+logger = logging.getLogger("__main__")
 
 
 @beartype
@@ -23,4 +26,10 @@ class DownloadMatrixToVendingMachineAdapter(DownloadMatrixToVendingMachinePort):
             command=command
         )
 
-        pass
+        if res is not ResultCode.SUCCESS:
+            logger.critical(
+                f"Не удалось привязать матрицу к аппарату {vending_machine.name}."
+            )
+            return False
+
+        return True
