@@ -10,7 +10,7 @@ from new_src.application.use_cases.upload_machine_matrix import UploadAndApplyMa
 from new_src.domain.entites.matrix import Matrix
 from new_src.domain.entites.vending_machine import VendingMachine
 from new_src.domain.exceptions import UploadMatrixError
-from new_src.domain.ports.get_all_matrices import GetAllMatricesPort
+from new_src.domain.repositories.matrix_repository import MatrixRepository
 from new_src.domain.repositories.vending_machine_repository import VendingMachineRepository
 from new_src.domain.value_objects.ids.vending_machine_id import VMId
 
@@ -20,7 +20,7 @@ logger = logging.getLogger("__main__")
 @beartype
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SelectAndUploadMatricesUseCase:
-    get_all_matrices: GetAllMatricesPort
+    matrix_repository: MatrixRepository
     vending_machine_repository: VendingMachineRepository
     upload_and_apply_matrix_uc: UploadAndApplyMatrixUseCase
 
@@ -28,18 +28,11 @@ class SelectAndUploadMatricesUseCase:
         if not selected_matrix_names:
             raise UploadMatrixError("Не выбрано ни одной матрицы для загрузки")
 
-        matrices: list[Matrix] = await self.get_all_matrices.execute()
-
-        if not matrices:
-            raise UploadMatrixError("Не найдено ни одной доступной матрицы")
-
-        matrices_map: dict[str, Matrix] = {matrix.name: matrix for matrix in matrices}
-
         tasks: list[Awaitable] = []
         task_matrix_names: list[str] = []
 
         for name in selected_matrix_names:
-            matrix: Matrix | None = matrices_map.get(name)
+            matrix: Matrix | None = self.matrix_repository.get_by_name(name)
 
             if matrix is None:
                 logger.error(f"Матрица с именем '{name}' не найдена")

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from kit_api import KitVendingAPIClient
 
 from new_src.application.use_cases.select_and_upload_matrices import SelectAndUploadMatricesUseCase
+from new_src.application.use_cases.sync.sync_matrices_cache import SyncMatricesCache
 from new_src.application.use_cases.sync.sync_vending_machines_cache import SyncVendingMachinesCache
 from new_src.application.use_cases.upload_machine_matrix import UploadAndApplyMatrixUseCase
 from new_src.controllers.update_matrices_controller import SelectAndUpdateMatricesController
@@ -14,6 +15,7 @@ from new_src.domain.ports.upload_machine_matrix import UploadMatrixPort
 from new_src.infrastructure.adapters.google_sheets.get_matrix_data import GetAllMatricesAdapter
 from new_src.infrastructure.adapters.kit_vending.upload_matrix import UploadMatrixAdapter
 from new_src.infrastructure.interactive_matrices_selector import InteractiveSelector
+from new_src.infrastructure.repositories.matrix_repository import InMemoryMatrixRepository
 from new_src.infrastructure.repositories.vending_machine_repository import InMemoryVendingMachineRepository
 
 load_dotenv()
@@ -43,10 +45,16 @@ async def main():
         )
 
         vending_machine_repository = InMemoryVendingMachineRepository()
+        matrix_repository = InMemoryMatrixRepository()
 
         sync_data_vending_machines_uc: SyncVendingMachinesCache = SyncVendingMachinesCache(
             vending_machine_repository=vending_machine_repository,
             kit_api_client=kit_api_client,
+        )
+
+        sync_matrices_cache_uc: SyncMatricesCache = SyncMatricesCache(
+            get_all_matrices=get_all_matrices,
+            matrix_repository=matrix_repository,
         )
 
         upload_and_apply_matrix_uc: UploadAndApplyMatrixUseCase = UploadAndApplyMatrixUseCase(
@@ -54,18 +62,19 @@ async def main():
         )
 
         select_and_upload_matrices_uc: SelectAndUploadMatricesUseCase = SelectAndUploadMatricesUseCase(
-            get_all_matrices=get_all_matrices,
+            matrix_repository=matrix_repository,
             vending_machine_repository=vending_machine_repository,
             upload_and_apply_matrix_uc=upload_and_apply_matrix_uc,
         )
 
         controller = SelectAndUpdateMatricesController(
-            get_all_matrices=get_all_matrices,
+            matrix_repository=matrix_repository,
             interactive_selector=interactive_selector,
             select_and_upload_matrices_uc=select_and_upload_matrices_uc,
         )
 
         await sync_data_vending_machines_uc.execute()
+        await sync_matrices_cache_uc.execute()
         await controller.run()
         pass
 
