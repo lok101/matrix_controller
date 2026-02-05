@@ -1,11 +1,13 @@
 import asyncio
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Awaitable
+from zoneinfo import ZoneInfo
 
 from beartype import beartype
 
-from new_src.app.use_cases.upload_machine_matrix import UploadAndApplyMatrixUseCase
+from new_src.application.use_cases.upload_machine_matrix import UploadAndApplyMatrixUseCase
 from new_src.domain.entites.matrix import Matrix
 from new_src.domain.entites.vending_machine import VendingMachine
 from new_src.domain.ports.get_all_matrices import GetAllMatricesPort
@@ -27,6 +29,7 @@ class SelectAndUpdateMatricesController:
     upload_and_apply_matrix_uc: UploadAndApplyMatrixUseCase
 
     async def run(self):
+        now = datetime.now(tz=ZoneInfo("Asia/Yekaterinburg"))
 
         matrices: list[Matrix] = await self.get_all_matrices.execute()
         matrices_map: dict[str, Matrix] = {matrix.name: matrix for matrix in matrices}
@@ -51,7 +54,7 @@ class SelectAndUpdateMatricesController:
 
             machines: list[VendingMachine] = self._get_vending_machines(matrix.vending_machines_ids)
 
-            task = self.upload_and_apply_matrix_uc.execute(matrix, machines)
+            task = self.upload_and_apply_matrix_uc.execute(matrix, machines, now)
 
             tasks.append(task)
 

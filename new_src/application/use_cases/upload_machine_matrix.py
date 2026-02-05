@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 from new_src.domain.entites.matrix import Matrix
 from new_src.domain.entites.vending_machine import VendingMachine
@@ -11,11 +12,11 @@ from new_src.domain.value_objects.ids.matrix_kit_id import MatrixKitId
 class UploadAndApplyMatrixUseCase:
     upload_matrix_port: UploadMatrixPort
 
-    async def execute(self, matrix: Matrix, machines: list[VendingMachine]):
+    async def execute(self, matrix: Matrix, machines: list[VendingMachine], timestamp: datetime):
         if not machines:
             raise UploadMatrixError('No machine to upload')
 
-        matrix_id: MatrixKitId | None = await self.upload_matrix_port.execute(matrix)
+        matrix_id: MatrixKitId | None = await self.upload_matrix_port.execute(matrix, timestamp)
 
         if matrix_id is None:
             raise NotImplementedError()

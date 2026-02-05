@@ -1,78 +1,68 @@
 import asyncio
 import os
 
+import gspread
 from dotenv import load_dotenv
+from kit_api import KitVendingAPIClient
 
-from src.application.update_multiple_matrices_case import UpdateMultipleMatricesUseCase
-from src.application.update_snack_matrix_case import UpdateSnackMatrixUseCase
-from src.application.user_select_matrices_use_case import GetMatricesWithSelectionUseCase
-from src.controllers.update_snacks_matrices import UpdateSnackMatricesController
-
-from src.infrastructure.ex_api.gspread_api_client import GspreadAPIClient
-from src.infrastructure.ex_api.kit_api_client import KitVendingAPI
-from src.infrastructure.ex_api.timestamp_api import TimestampAPI
-from src.infrastructure.interactive_matrices_selector import ColorfulInteractiveSelector
-from src.infrastructure.repositories.matrix_repository import InMemoryMatrixRepository
-from src.infrastructure.repositories.product_repository import InMemoryProductRepository
-from src.infrastructure.repositories.vending_machine_repository import InMemoryVendingMachineRepository
-
-from src.infrastructure.services.kit_vendor_matrix_gateway import KitVendorMatrixGateway
-from src.infrastructure.services.sync_data_service import SyncDataService
+from new_src.application.use_cases.sync.sync_vending_machines_cache import SyncVendingMachinesCache
+from new_src.application.use_cases.upload_machine_matrix import UploadAndApplyMatrixUseCase
+from new_src.controllers.update_matrices_controller import SelectAndUpdateMatricesController
+from new_src.domain.ports.get_all_matrices import GetAllMatricesPort
+from new_src.domain.ports.upload_machine_matrix import UploadMatrixPort
+from new_src.infrastructure.adapters.google_sheets.get_matrix_data import GetAllMatricesAdapter
+from new_src.infrastructure.adapters.kit_vending.upload_matrix import UploadMatrixAdapter
+from new_src.infrastructure.interactive_matrices_selector import InteractiveSelector
+from new_src.infrastructure.repositories.vending_machine_repository import InMemoryVendingMachineRepository
 
 load_dotenv()
 
+kit_company_id = os.getenv("KIT_API_COMPANY_ID")
+kit_login = os.getenv("KIT_API_LOGIN")
+kit_password = os.getenv("KIT_API_PASSWORD")
+
 
 async def main():
-    kit_company_id = os.getenv("KIT_API_COMPANY_ID")
-    kit_login = os.getenv("KIT_API_LOGIN")
-    kit_password = os.getenv("KIT_API_PASSWORD")
+    async with KitVendingAPIClient(login=kit_login, password=kit_password, company_id=kit_company_id) as kit_api_client:
+        table_id: str | None = os.getenv("GOOGLE_SHEETS_MATRIX_TABLE_ID")
 
-    timestamp_api = TimestampAPI()
+        if table_id is None:
+            raise Exception("Укажите Id таблицы в .env файле (GOOGLE_SHEETS_MATRIX_TABLE_ID=...).")
 
-    gspread_api_client = GspreadAPIClient()
-    kit_api_client = KitVendingAPI(
-        login=kit_login,
-        password=kit_password,
-        company_id=kit_company_id,
-        timestamp_provider=timestamp_api
-    )
+        spreadsheet = gspread.service_account().open_by_key(key=table_id)
 
-    selector = ColorfulInteractiveSelector()
+        interactive_selector: InteractiveSelector = InteractiveSelector()
 
-    product_repo = InMemoryProductRepository()
-    matrix_repo = InMemoryMatrixRepository()
-    vending_machine_repo = InMemoryVendingMachineRepository()
+        get_all_matrices: GetAllMatricesPort = GetAllMatricesAdapter(
+            spreadsheet=spreadsheet,
+        )
 
-    vendor_matrix_gateway = KitVendorMatrixGateway(api_client=kit_api_client)
+        upload_matrix_port: UploadMatrixPort = UploadMatrixAdapter(
+            kit_api_client=kit_api_client
+        )
 
-    get_matrices_uc = GetMatricesWithSelectionUseCase(selector=selector, matrix_repo=matrix_repo)
-    update_matrix_uc = UpdateSnackMatrixUseCase(
-        vending_machine_repo=vending_machine_repo,
-        vendor_matrix_gateway=vendor_matrix_gateway,
-    )
-    update_matrices_uc = UpdateMultipleMatricesUseCase(
-        update_matrix_uc=update_matrix_uc,
-        matrix_repo=matrix_repo
-    )
+        vending_machine_repository = InMemoryVendingMachineRepository()
 
-    update_matrices_controller = UpdateSnackMatricesController(
-        update_multiple_matrices_uc=update_matrices_uc,
-        select_matrices_use_case=get_matrices_uc,
+        sync_data_vending_machines_uc: SyncVendingMachinesCache = SyncVendingMachinesCache(
+            vending_machine_repository=vending_machine_repository,
+            kit_api_client=kit_api_client,
+        )
 
-    )
+        upload_and_apply_matrix_uc: UploadAndApplyMatrixUseCase = UploadAndApplyMatrixUseCase(
+            upload_matrix_port=upload_matrix_port
+        )
 
-    sync_service = SyncDataService(
-        vending_machine_repo=vending_machine_repo,
-        product_repo=product_repo,
-        gs_api_client=gspread_api_client,
-        kit_api_client=kit_api_client,
-        matrix_repo=matrix_repo
-    )
+        controller = SelectAndUpdateMatricesController(
+            get_all_matrices=get_all_matrices,
+            interactive_selector=interactive_selector,
+            vending_machine_repository=vending_machine_repository,
+            upload_and_apply_matrix_uc=upload_and_apply_matrix_uc,
+        )
 
-    sync_service.sync_all_data()
-    result = await update_matrices_controller.execute()
-    print(result)
-    pass
+        await sync_data_vending_machines_uc.execute()
+        await controller.run()
+        pass
+
 
 
 if __name__ == "__main__":
