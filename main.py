@@ -5,6 +5,7 @@ import gspread
 from dotenv import load_dotenv
 from kit_api import KitVendingAPIClient
 
+from new_src.application.use_cases.select_and_upload_matrices import SelectAndUploadMatricesUseCase
 from new_src.application.use_cases.sync.sync_vending_machines_cache import SyncVendingMachinesCache
 from new_src.application.use_cases.upload_machine_matrix import UploadAndApplyMatrixUseCase
 from new_src.controllers.update_matrices_controller import SelectAndUpdateMatricesController
@@ -52,11 +53,16 @@ async def main():
             upload_matrix_port=upload_matrix_port
         )
 
+        select_and_upload_matrices_uc: SelectAndUploadMatricesUseCase = SelectAndUploadMatricesUseCase(
+            get_all_matrices=get_all_matrices,
+            vending_machine_repository=vending_machine_repository,
+            upload_and_apply_matrix_uc=upload_and_apply_matrix_uc,
+        )
+
         controller = SelectAndUpdateMatricesController(
             get_all_matrices=get_all_matrices,
             interactive_selector=interactive_selector,
-            vending_machine_repository=vending_machine_repository,
-            upload_and_apply_matrix_uc=upload_and_apply_matrix_uc,
+            select_and_upload_matrices_uc=select_and_upload_matrices_uc,
         )
 
         await sync_data_vending_machines_uc.execute()
