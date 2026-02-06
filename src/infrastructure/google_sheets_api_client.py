@@ -6,8 +6,12 @@ from typing import Any
 
 import gspread
 from beartype import beartype
+from gspread import Worksheet
 
 logger = logging.getLogger("__main__")
+
+GOODS_WORKSHEET_ID = "2037389959"
+GOODS_DATA_START_ROW = 4
 
 MACHINE_IDS_CELL_INDEX = 7
 
@@ -18,10 +22,26 @@ CELL_DATAW_WIDTH = 7
 class ExtractDataError(Exception):
     pass
 
+def is_float(s: str) -> bool:
+    s = s.replace(",", ".")
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 
 @beartype
 @dataclass(frozen=True, slots=True, kw_only=True)
-class MatrixCellDTO:
+class ProductModel:
+    id: int
+    name: str | None
+    price: float | None
+
+
+@beartype
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MatrixCellModel:
     number: int | None
     product_name: str | None
     product_price: float | None
@@ -29,9 +49,9 @@ class MatrixCellDTO:
 
 @beartype
 @dataclass(frozen=True, slots=True, kw_only=True)
-class MatrixDTO:
+class MatrixModel:
     matrix_name: str
-    cells_data: list[MatrixCellDTO]
+    cells_data: list[MatrixCellModel]
     vending_machine_ids: list[int]
 
 
@@ -40,8 +60,8 @@ class MatrixDTO:
 class GoogleSheetsAPIClient:
     spreadsheet: gspread.Spreadsheet
 
-    def get_all_matrices(self) -> list[MatrixDTO]:
-        res: list[MatrixDTO] = []
+    def get_all_matrices(self) -> list[MatrixModel]:
+        res: list[MatrixModel] = []
 
         matrices_worksheets = self._get_matrices_worksheets()
 
@@ -49,16 +69,55 @@ class GoogleSheetsAPIClient:
             sheet_data: list[list[Any]] = sheet.get_values()
             matrix_name: str = sheet.title
 
-            cells: list[MatrixCellDTO] = self._extract_cells_data(sheet_data[2:], matrix_name)
+            cells: list[MatrixCellModel] = self._extract_cells_data(sheet_data[2:], matrix_name)
             vending_machines_ids: list[int] = self._extract_vending_machines_ids(sheet_data, matrix_name)
 
             res.append(
-                MatrixDTO(
+                MatrixModel(
                     cells_data=cells,
                     matrix_name=matrix_name,
                     vending_machine_ids=vending_machines_ids,
                 )
             )
+
+        return res
+
+    def get_all_products(self) -> list[ProductModel]:
+        res: list[ProductModel] = []
+
+        worksheet: Worksheet = self.spreadsheet.get_worksheet_by_id(GOODS_WORKSHEET_ID)
+        all_values: list[list[Any]] = worksheet.get_values()
+        goods_data: list[list[Any]] = all_values[GOODS_DATA_START_ROW:]
+
+        for row in goods_data:
+            product_id: int
+            product_name: str | None = None
+            product_price: float | None = None
+
+            product_id_data, product_name_data, product_price_data, _ = row[:4]
+
+            if not product_id_data:
+                continue
+
+            if product_id_data.isdigit():
+                product_id: int = int(product_id_data)
+            else:
+                raise ExtractDataError(f"В поле Id у товара передано не цифровое значение. Имя товара: {product_name}.")
+
+            if is_float(product_price_data):
+                product_price_data = product_price_data.replace(",", ".")
+                product_price: float = float(product_price_data)
+
+            product_name: str | None = product_name_data or None
+
+
+            product: ProductModel = ProductModel(
+                id=product_id,
+                name=product_name,
+                price=product_price,
+            )
+
+            res.append(product)
 
         return res
 
@@ -93,8 +152,8 @@ class GoogleSheetsAPIClient:
         return res
 
     @staticmethod
-    def _extract_cells_data(data_range: list[list[str]], matrix_name: str) -> list[MatrixCellDTO]:
-        res: list[MatrixCellDTO] = []
+    def _extract_cells_data(data_range: list[list[str]], matrix_name: str) -> list[MatrixCellModel]:
+        res: list[MatrixCellModel] = []
         data_range.append([])  # выравнивание для batched
 
         for names_row, data_row, _ in batched(data_range, CELL_DATAW_HEIGHT):
@@ -112,14 +171,14 @@ class GoogleSheetsAPIClient:
                 elif product_name is not None:
                     logger.error(f"Переданный номер ячейки не является числом. Матрица: {matrix_name}.")
 
-                if price_data.isdigit():
+                if is_float(price_data):
                     price: float = float(price_data)
 
                 elif product_name is not None:
                     logger.error(f"Переданная цена товара не является числом. Матрица: {matrix_name}.")
 
                 res.append(
-                    MatrixCellDTO(
+                    MatrixCellModel(
                         product_price=price,
                         product_name=product_name,
                         number=cell_number,

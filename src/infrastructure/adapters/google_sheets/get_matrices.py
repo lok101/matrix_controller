@@ -9,7 +9,7 @@ from src.domain.entites.matrix import Matrix
 from src.domain.entites.product import Product
 from src.domain.value_objects.ids.vending_machine_id import VMId
 from src.domain.value_objects.money import Money
-from src.infrastructure.google_sheets_api_client import GoogleSheetsAPIClient, MatrixDTO, MatrixCellDTO
+from src.infrastructure.google_sheets_api_client import GoogleSheetsAPIClient, MatrixModel, MatrixCellModel
 
 
 @beartype
@@ -20,7 +20,7 @@ class GetAllMatricesAdapter:
 
     def execute(self) -> list[Matrix]:
         res: list[Matrix] = []
-        matrices_data: list[MatrixDTO] = self.google_table_api_client.get_all_matrices()
+        matrices_data: list[MatrixModel] = self.google_table_api_client.get_all_matrices()
 
         for matrix_dto in matrices_data:
             matrix_name: str = matrix_dto.matrix_name
@@ -37,7 +37,7 @@ class GetAllMatricesAdapter:
 
         return res
 
-    def _get_matrix_cells(self, cells_data: list[MatrixCellDTO], matrix_name: str) -> list[MatrixCell]:
+    def _get_matrix_cells(self, cells_data: list[MatrixCellModel], matrix_name: str) -> list[MatrixCell]:
         res: list[MatrixCell] = []
 
         for cell_dto in cells_data:
@@ -49,15 +49,22 @@ class GetAllMatricesAdapter:
             product_name: str = cell_dto.product_name
             product_price: float | None = cell_dto.product_price
 
-            price: Money = Money(cell_dto.product_price)
+            if product_price is None:
+                price: Money = Money(0)
 
-            if not product_name and product_price is not None:
+            else:
+                price: Money = Money(cell_dto.product_price)
+
+            if product_name is None and product_price is None:
+                continue
+
+            if product_name is None and product_price is not None:
                 raise SynchronizationError(
                     f"Для товара не передано имя, но указана цена. "
                     f"Матрица: {matrix_name}, товар номер {cell_number}."
                 )
 
-            if product_name and product_price is None:
+            if product_name is not None and product_price is None:
                 raise SynchronizationError(
                     f"Для товара не указана цена. "
                     f"Матрица: {matrix_name}, товар номер {cell_number}."

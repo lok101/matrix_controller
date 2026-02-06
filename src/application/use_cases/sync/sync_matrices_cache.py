@@ -6,7 +6,7 @@ from beartype import beartype
 
 from src.application.exceptions import SynchronizationError
 from src.domain.entites.matrix import Matrix
-from src.domain.ports.get_all_matrices import GetAllMatricesPort
+from src.domain.ports.get_matrices import GetAllMatricesPort
 
 logger = logging.getLogger("__main__")
 
@@ -30,7 +30,7 @@ class SyncMatricesCache:
         matrices_quantity: int = self.matrix_repository.get_size()
         logger.info(f"Репозиторий матриц очищен. Матриц в репозитории: {matrices_quantity}.")
 
-        matrices: list[Matrix] = await self.get_all_matrices.execute()
+        matrices: list[Matrix] = self.get_all_matrices.execute()
 
         if not matrices:
             raise SynchronizationError("При попытке синхронизации не были получены матрицы.")
