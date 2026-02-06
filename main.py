@@ -12,6 +12,7 @@ from src.application.use_cases.sync.sync_matrices_cache import SyncMatricesCache
 from src.application.use_cases.sync.sync_products_cache import SyncProductsCache
 from src.application.use_cases.sync.sync_vending_machines_cache import SyncVendingMachinesCache
 from src.application.use_cases.upload_machine_matrix import UploadAndApplyMatrixUseCase
+from src.application.services.matrix_validator import MatrixValidator
 from src.controllers.update_matrices_controller import SelectAndUpdateMatricesController
 from src.domain.ports.apply_matrix_to_vending_machine import ApplyMatrixToVendingMachinePort
 from src.domain.ports.bind_matrix_to_vending_machine import BindMatrixToVendingMachinePort
@@ -108,6 +109,7 @@ async def main():
             bind_matrix_to_machine_port=bind_matrix_to_machine_port,
             download_matrix_to_machine_port=download_matrix_to_machine_port,
             apply_matrix_to_machine_port=apply_matrix_to_machine_port,
+            matrix_validator=MatrixValidator(min_price_rub=30),
         )
 
         select_and_upload_matrices_uc: SelectAndUploadMatricesUseCase = SelectAndUploadMatricesUseCase(
