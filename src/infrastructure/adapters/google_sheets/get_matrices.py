@@ -50,10 +50,10 @@ class GetAllMatricesAdapter:
             product_price: float | None = cell_dto.product_price
 
             if product_price is None:
-                price: Money = Money(0)
+                price: Money = Money(rubles=0)
 
             else:
-                price: Money = Money(cell_dto.product_price)
+                price: Money = Money(rubles=cell_dto.product_price)
 
             if product_name is None and product_price is None:
                 continue

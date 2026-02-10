@@ -27,7 +27,7 @@ class GetAllProductsAdapter(GetAllProductsPort):
         for product_model in products_data:
             product_id: ProductId = ProductId(product_model.id)
             product_name: str = product_model.name
-            price: Money = Money(product_model.price)
+            price: Money = Money(rubles=product_model.price)
 
             product: Product = Product(
                 id=product_id,
