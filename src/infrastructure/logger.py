@@ -32,7 +32,7 @@ def configure_logging(log_dir: str = "logs") -> logging.Logger:
     root_logger.setLevel(logging.DEBUG)
 
     console_handler = FlushingStreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
 
     file_handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)

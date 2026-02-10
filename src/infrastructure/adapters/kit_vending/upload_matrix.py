@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -8,6 +9,8 @@ from src.domain.entites.matrix import Matrix
 from src.domain.entites.product import Product
 from src.domain.ports.upload_machine_matrix import UploadMatrixPort
 from src.domain.value_objects.ids.matrix_kit_id import MatrixKitId
+
+logger = logging.getLogger(__name__)
 
 
 @beartype
@@ -31,12 +34,19 @@ class UploadMatrixAdapter(UploadMatrixPort):
             )
 
             if matrix_id is None:
-                raise NotImplementedError()
+                logger.error(
+                    f"Не удалось создать матрицу '{matrix_name}'. "
+                    f"API вернул None."
+                )
+                return None
 
         except KitAPIResponseError as ex:
-            print(ex)
+            logger.error(
+                f"Ошибка API при создании матрицы '{matrix_name}': {ex}"
+            )
             return None
 
+        logger.info(f"Матрица '{matrix_name}' успешно создана с ID: {matrix_id}")
         return MatrixKitId(matrix_id)
 
     @staticmethod
