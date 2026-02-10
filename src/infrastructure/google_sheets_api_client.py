@@ -8,7 +8,7 @@ import gspread
 from beartype import beartype
 from gspread import Worksheet
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger()
 
 GOODS_WORKSHEET_ID = "2037389959"
 GOODS_DATA_START_ROW = 4

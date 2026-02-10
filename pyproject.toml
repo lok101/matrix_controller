@@ -11,4 +11,5 @@ dependencies = [
     "pydantic>=2.11.9",
     "kit-api @ git+https://github.com/lok101/kit-vending-api.git",
     "beartype>=0.22.9",
+    "tzlocal>=5.3.1",
 ]

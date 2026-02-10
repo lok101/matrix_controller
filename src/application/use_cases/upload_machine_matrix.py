@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,7 +13,7 @@ from src.domain.ports.download_matrix_to_vending_machine import DownloadMatrixTo
 from src.domain.ports.upload_machine_matrix import UploadMatrixPort
 from src.domain.value_objects.ids.matrix_kit_id import MatrixKitId
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger()
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class UploadAndApplyMatrixUseCase:
@@ -21,6 +22,8 @@ class UploadAndApplyMatrixUseCase:
     download_matrix_to_machine_port: DownloadMatrixToVendingMachinePort
     apply_matrix_to_machine_port: ApplyMatrixToVendingMachinePort
     matrix_validator: MatrixValidator
+
+    timeout_before_applying: int = 120
 
     async def execute(self, matrix: Matrix, machines: list[VendingMachine], timestamp: datetime):
         if not machines:
@@ -61,5 +64,3 @@ class UploadAndApplyMatrixUseCase:
                     f"Матрица: {matrix.name}, аппарат: {machine.name}."
                 )
                 continue
-
-            # проверить

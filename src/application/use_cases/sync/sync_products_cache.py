@@ -7,7 +7,7 @@ from src.application.repositories.product_repository import ProductRepository
 from src.domain.entites.product import Product
 from src.domain.ports.get_products import GetAllProductsPort
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger()
 
 
 @beartype

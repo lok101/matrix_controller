@@ -9,7 +9,7 @@ from src.domain.value_objects.ids.product_id import ProductId
 from src.domain.value_objects.money import Money
 from src.infrastructure.google_sheets_api_client import GoogleSheetsAPIClient, ProductModel
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger()
 
 
 @beartype

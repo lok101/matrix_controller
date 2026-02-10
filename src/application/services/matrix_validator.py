@@ -21,8 +21,8 @@ class MatrixValidator:
         bad_purchase_price_cells: list[str] = []
 
         for cell in matrix.cells:
-            price_rub: int = cell.price.as_ruble()
-            purchase_price_rub: int = cell.product.purchase_price.as_ruble()
+            price_rub: float = cell.price.as_ruble()
+            purchase_price_rub: float = cell.product.purchase_price.as_ruble()
 
             if price_rub < purchase_price_rub:
                 bad_price_cells.append(

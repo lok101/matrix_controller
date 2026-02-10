@@ -14,7 +14,7 @@ from src.domain.repositories.matrix_repository import MatrixRepository
 from src.domain.repositories.vending_machine_repository import VendingMachineRepository
 from src.domain.value_objects.ids.vending_machine_id import VMId
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger()
 
 
 @beartype

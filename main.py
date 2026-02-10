@@ -30,11 +30,13 @@ from src.infrastructure.adapters.kit_vending.download_matrix_to_vending_machine 
 from src.infrastructure.adapters.kit_vending.upload_matrix import UploadMatrixAdapter
 from src.infrastructure.google_sheets_api_client import GoogleSheetsAPIClient
 from src.infrastructure.interactive_matrices_selector import InteractiveSelector
+from src.infrastructure.logger import configure_logging
 from src.infrastructure.repositories.matrix_repository import InMemoryMatrixRepository
 from src.infrastructure.repositories.product_repository import InMemoryProductRepository
 from src.infrastructure.repositories.vending_machine_repository import InMemoryVendingMachineRepository
 
 load_dotenv()
+configure_logging()
 
 kit_company_id = int(os.getenv("KIT_API_COMPANY_ID"))
 kit_login = os.getenv("KIT_API_LOGIN")
@@ -109,7 +111,7 @@ async def main():
             bind_matrix_to_machine_port=bind_matrix_to_machine_port,
             download_matrix_to_machine_port=download_matrix_to_machine_port,
             apply_matrix_to_machine_port=apply_matrix_to_machine_port,
-            matrix_validator=MatrixValidator(min_price_rub=30),
+            matrix_validator=MatrixValidator(),
         )
 
         select_and_upload_matrices_uc: SelectAndUploadMatricesUseCase = SelectAndUploadMatricesUseCase(

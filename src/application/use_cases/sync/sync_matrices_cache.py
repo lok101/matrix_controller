@@ -8,7 +8,7 @@ from src.application.exceptions import SynchronizationError
 from src.domain.entites.matrix import Matrix
 from src.domain.ports.get_matrices import GetAllMatricesPort
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger()
 
 @runtime_checkable
 class MatrixCache(Protocol):
