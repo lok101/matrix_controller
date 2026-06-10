@@ -1,136 +1,55 @@
+import argparse
 import asyncio
-import os
+import logging
+import sys
 
-import gspread
-from dotenv import load_dotenv
-
-from src.application.repositories.product_repository import ProductRepository
-from src.application.use_cases.select_and_upload_matrices import SelectAndUploadMatricesUseCase
-from src.application.use_cases.sync.sync_matrices_cache import SyncMatricesCache
-from src.application.use_cases.sync.sync_products_cache import SyncProductsCache
-from src.application.use_cases.sync.sync_vending_machines_cache import SyncVendingMachinesCache
-from src.application.use_cases.upload_machine_matrix import UploadAndApplyMatrixUseCase
-from src.application.services.matrix_validator import MatrixValidator
-from src.controllers.update_matrices_controller import SelectAndUpdateMatricesController
-from src.domain.ports.apply_matrix_to_vending_machine import ApplyMatrixToVendingMachinePort
-from src.domain.ports.bind_matrix_to_vending_machine import BindMatrixToVendingMachinePort
-from src.domain.ports.download_matrix_to_vending_machine import DownloadMatrixToVendingMachinePort
-from src.domain.ports.get_matrices import GetAllMatricesPort
-from src.domain.ports.get_products import GetAllProductsPort
-from src.domain.ports.upload_machine_matrix import UploadMatrixPort
-from src.infrastructure.adapters.google_sheets.get_matrices import GetAllMatricesAdapter
-from src.infrastructure.adapters.google_sheets.get_products import GetAllProductsAdapter
-from src.infrastructure.google_sheets_api_client import GoogleSheetsAPIClient
-from src.infrastructure.interactive_matrices_selector import InteractiveSelector
-from src.infrastructure.kit_vending.adapters.apply_matrix_to_vending_machine import (
-    ApplyMatrixToVendingMachineAdapter,
-)
-from src.infrastructure.kit_vending.adapters.bind_matrix_to_machine import BindMatrixToVendingMachineAdapter
-from src.infrastructure.kit_vending.adapters.download_matrix_to_vending_machine import (
-    DownloadMatrixToVendingMachineAdapter,
-)
-from src.infrastructure.kit_vending.adapters.upload_matrix import UploadMatrixAdapter
-from src.infrastructure.kit_vending.api.account import KitAPIAccount
-from src.infrastructure.kit_vending.api.client import KitVendingAPIClient
-from src.infrastructure.kit_vending.api.config import KitAPIConfig
-from src.infrastructure.logger import configure_logging
-from src.infrastructure.repositories.matrix_repository import InMemoryMatrixRepository
-from src.infrastructure.repositories.product_repository import InMemoryProductRepository
-from src.infrastructure.repositories.vending_machine_repository import InMemoryVendingMachineRepository
-
-load_dotenv()
-configure_logging()
+from src.bootstrap.container import Container
+from src.bootstrap.settings import Settings
+from src.infrastructure.logging import configure_logging
+from src.interfaces.cli.run_interactive import run_interactive
+from src.interfaces.cli.run_scheduled import run_scheduled
 
 
-async def main():
-    kit_config = KitAPIConfig.from_env()
-    account = KitAPIAccount(
-        login=kit_config.login,
-        password=kit_config.password,
-        company_id=kit_config.company_id,
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="matrix-controller")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    run_parser = sub.add_parser("run", help="Sync + deploy")
+    run_parser.add_argument(
+        "--mode",
+        choices=["interactive", "scheduled"],
+        required=True,
     )
 
-    async with KitVendingAPIClient(account=account, config=kit_config) as kit_api_client:
-        table_id: str | None = os.getenv("GOOGLE_SHEETS_MATRIX_TABLE_ID")
+    sub.add_parser("sync", help="Sync caches only")
+    return parser
 
-        if table_id is None:
-            raise Exception("Укажите Id таблицы в .env файле (GOOGLE_SHEETS_MATRIX_TABLE_ID=...).")
 
-        spreadsheet = gspread.service_account().open_by_key(key=table_id)
-        google_table_api_client: GoogleSheetsAPIClient = GoogleSheetsAPIClient(spreadsheet=spreadsheet)
+async def async_main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
-        interactive_selector: InteractiveSelector = InteractiveSelector()
+    try:
+        settings = Settings()
+    except Exception as exc:
+        print(f"Ошибка конфигурации: {exc}", file=sys.stderr)
+        return 2
 
-        product_repository: ProductRepository = InMemoryProductRepository()
+    configure_logging()
+    logging.getLogger().setLevel(settings.log_level)
 
-        get_all_matrices: GetAllMatricesPort = GetAllMatricesAdapter(
-            google_table_api_client=google_table_api_client,
-            product_repository=product_repository,
-        )
+    async with Container(settings) as container:
+        if args.command == "sync":
+            await container.sync_only()
+            return 0
 
-        upload_matrix_port: UploadMatrixPort = UploadMatrixAdapter(
-            kit_api_client=kit_api_client
-        )
+        if args.command == "run":
+            if args.mode == "interactive":
+                return await run_interactive(container)
+            return await run_scheduled(container, settings.scheduled_matrix_names)
 
-        bind_matrix_to_machine_port: BindMatrixToVendingMachinePort = BindMatrixToVendingMachineAdapter(
-            kit_api_client=kit_api_client,
-        )
-
-        download_matrix_to_machine_port: DownloadMatrixToVendingMachinePort = DownloadMatrixToVendingMachineAdapter(
-            kit_api_client=kit_api_client,
-        )
-
-        apply_matrix_to_machine_port: ApplyMatrixToVendingMachinePort = ApplyMatrixToVendingMachineAdapter(
-            kit_api_client=kit_api_client,
-        )
-
-        get_products_port: GetAllProductsPort = GetAllProductsAdapter(
-            google_table_api_client=google_table_api_client
-        )
-
-        vending_machine_repository = InMemoryVendingMachineRepository()
-        matrix_repository = InMemoryMatrixRepository()
-
-        sync_data_vending_machines_uc: SyncVendingMachinesCache = SyncVendingMachinesCache(
-            vending_machine_repository=vending_machine_repository,
-            kit_api_client=kit_api_client,
-        )
-
-        sync_matrices_cache_uc: SyncMatricesCache = SyncMatricesCache(
-            get_all_matrices=get_all_matrices,
-            matrix_repository=matrix_repository,
-        )
-
-        sync_products_cache_uc: SyncProductsCache = SyncProductsCache(
-            get_products=get_products_port,
-            product_repository=product_repository,
-        )
-
-        upload_and_apply_matrix_uc: UploadAndApplyMatrixUseCase = UploadAndApplyMatrixUseCase(
-            upload_matrix_port=upload_matrix_port,
-            bind_matrix_to_machine_port=bind_matrix_to_machine_port,
-            download_matrix_to_machine_port=download_matrix_to_machine_port,
-            apply_matrix_to_machine_port=apply_matrix_to_machine_port,
-            matrix_validator=MatrixValidator(),
-        )
-
-        select_and_upload_matrices_uc: SelectAndUploadMatricesUseCase = SelectAndUploadMatricesUseCase(
-            matrix_repository=matrix_repository,
-            vending_machine_repository=vending_machine_repository,
-            upload_and_apply_matrix_uc=upload_and_apply_matrix_uc,
-        )
-
-        controller = SelectAndUpdateMatricesController(
-            matrix_repository=matrix_repository,
-            interactive_selector=interactive_selector,
-            select_and_upload_matrices_uc=select_and_upload_matrices_uc,
-        )
-        sync_products_cache_uc.execute()
-        await sync_data_vending_machines_uc.execute()
-        await sync_matrices_cache_uc.execute()
-
-        await controller.run()
+    return 2
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(async_main()))

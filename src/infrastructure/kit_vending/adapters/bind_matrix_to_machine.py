@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from beartype import beartype
 
-from src.domain.entites.vending_machine import VendingMachine
+from src.domain.entities.vending_machine import VendingMachine
 from src.domain.ports.bind_matrix_to_vending_machine import BindMatrixToVendingMachinePort
 from src.domain.value_objects.ids.matrix_kit_id import MatrixKitId
 from src.domain.value_objects.ids.vending_machine_kit_id import VMKitId

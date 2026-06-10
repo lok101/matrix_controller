@@ -4,10 +4,10 @@ import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
-from src.domain.entites.cell import MatrixCell
-from src.domain.entites.matrix import Matrix
-from src.domain.entites.product import Product
-from src.domain.entites.vending_machine import VendingMachine
+from src.domain.entities.cell import MatrixCell
+from src.domain.entities.matrix import Matrix
+from src.domain.entities.product import Product
+from src.domain.entities.vending_machine import VendingMachine
 from src.domain.value_objects.command_result import CommandResult
 from src.domain.value_objects.ids.matrix_kit_id import MatrixKitId
 from src.domain.value_objects.ids.product_id import ProductId

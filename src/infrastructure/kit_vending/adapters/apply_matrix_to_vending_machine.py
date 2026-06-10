@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from beartype import beartype
 
-from src.domain.entites.vending_machine import VendingMachine
+from src.domain.entities.vending_machine import VendingMachine
 from src.domain.ports.apply_matrix_to_vending_machine import ApplyMatrixToVendingMachinePort
 from src.domain.value_objects.command_result import CommandResult
 from src.infrastructure.kit_vending.api.client import KitVendingAPIClient

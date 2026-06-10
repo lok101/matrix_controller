@@ -1,70 +1,29 @@
 import logging
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
 
 from beartype import beartype
 
-from src.application.exceptions import SynchronizationError
-from src.domain.entites.vending_machine import VendingMachine
-from src.domain.value_objects.ids.vending_machine_id import VMId
-from src.domain.value_objects.ids.vending_machine_kit_id import VMKitId
-from src.infrastructure.kit_vending.api.client import KitVendingAPIClient
-from src.infrastructure.kit_vending.api.models.vending_machines import (
-    ActiveVendingMachineModel,
-    VendingMachinesCollection,
-)
+from src.domain.exceptions import SynchronizationError
+from src.domain.ports.get_vending_machines import GetVendingMachinesPort
+from src.domain.repositories.vending_machine_repository import VendingMachineRepository
 
-logger = logging.getLogger()
-
-@runtime_checkable
-class VendingMachineCache(Protocol):
-    def add(self, vending_machine: VendingMachine) -> None: pass
-
-    def get_size(self) -> int: pass
-
-    def clear(self) -> None: pass
+logger = logging.getLogger(__name__)
 
 
 @beartype
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SyncVendingMachinesCache:
-    kit_api_client: KitVendingAPIClient
-
-    vending_machine_repository: VendingMachineCache
+    get_vending_machines: GetVendingMachinesPort
+    vending_machine_repository: VendingMachineRepository
 
     async def execute(self) -> None:
         self.vending_machine_repository.clear()
-        machines_quantity: int = self.vending_machine_repository.get_size()
-        logger.info(f"Репозиторий аппаратов очищен. Аппаратов в репозитории: {machines_quantity}.")
-
-        machines_collection: VendingMachinesCollection = await self.kit_api_client.get_vending_machines()
-
-        active_machines: list[ActiveVendingMachineModel] = machines_collection.get_active()
-
-        if not active_machines:
+        machines = await self.get_vending_machines.execute()
+        if not machines:
             raise SynchronizationError("При попытке синхронизации не были получены аппараты.")
-
-        for item in active_machines:
-            vending_machine: VendingMachine | None = self._map_to_domain(item)
-
-            if vending_machine is not None:
-                self.vending_machine_repository.add(vending_machine)
-
-        machines_quantity: int = self.vending_machine_repository.get_size()
-        logger.info(f"Синхронизация аппаратов завершена. Аппаратов в репозитории: {machines_quantity}.")
-
-    @staticmethod
-    def _map_to_domain(model: ActiveVendingMachineModel) -> VendingMachine | None:
-        if model.number is None:
-            logger.warning(f"Для переданного аппарата не удалось определить код: {model}")
-            return None
-
-        machine_id: VMId = VMId(model.number)
-        kit_id: VMKitId = VMKitId(model.id)
-        name: str = model.name
-
-        return VendingMachine(
-            id=machine_id,
-            kit_id=kit_id,
-            name=name,
+        for machine in machines:
+            self.vending_machine_repository.add(machine)
+        logger.info(
+            "Синхронизация аппаратов завершена. Аппаратов в репозитории: %s.",
+            self.vending_machine_repository.get_size(),
         )

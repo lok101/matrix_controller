@@ -3,11 +3,11 @@ from dataclasses import dataclass
 
 from beartype import beartype
 
-from src.application.repositories.product_repository import ProductRepository
-from src.domain.entites.product import Product
+from src.domain.exceptions import SynchronizationError
 from src.domain.ports.get_products import GetAllProductsPort
+from src.domain.repositories.product_repository import ProductRepository
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 @beartype
@@ -16,11 +16,14 @@ class SyncProductsCache:
     get_products: GetAllProductsPort
     product_repository: ProductRepository
 
-    def execute(self):
+    def execute(self) -> None:
         self.product_repository.clear()
-        products: list[Product] = self.get_products.execute()
-
+        products = self.get_products.execute()
+        if not products:
+            raise SynchronizationError("При попытке синхронизации не были получены товары.")
         for product in products:
             self.product_repository.add(product)
-
-        logger.info(f"Синхронизация товаров завершена. Товаров в репозитории: {self.product_repository.get_size()}")
+        logger.info(
+            "Синхронизация товаров завершена. Товаров в репозитории: %s.",
+            self.product_repository.get_size(),
+        )

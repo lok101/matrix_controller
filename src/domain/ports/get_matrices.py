@@ -1,8 +1,8 @@
-from typing import Protocol, runtime_checkable
+from abc import ABC, abstractmethod
 
-from src.domain.entites.matrix import Matrix
+from src.domain.entities.matrix import Matrix
 
 
-@runtime_checkable
-class GetAllMatricesPort(Protocol):
-    def execute(self) -> list[Matrix]: pass
+class GetAllMatricesPort(ABC):
+    @abstractmethod
+    def execute(self) -> list[Matrix]: ...

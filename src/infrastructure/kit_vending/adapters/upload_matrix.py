@@ -6,8 +6,8 @@ from datetime import datetime
 
 from beartype import beartype
 
-from src.domain.entites.matrix import Matrix
-from src.domain.entites.product import Product
+from src.domain.entities.matrix import Matrix
+from src.domain.entities.product import Product
 from src.domain.ports.upload_machine_matrix import UploadMatrixPort
 from src.domain.value_objects.ids.matrix_kit_id import MatrixKitId
 from src.infrastructure.kit_vending.api.client import KitVendingAPIClient

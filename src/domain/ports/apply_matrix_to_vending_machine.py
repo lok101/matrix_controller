@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from src.domain.entites.vending_machine import VendingMachine
+from src.domain.entities.vending_machine import VendingMachine
 from src.domain.value_objects.command_result import CommandResult
 
 
