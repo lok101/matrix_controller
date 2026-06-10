@@ -141,9 +141,11 @@ RunDeploymentJobUseCase
 
 | Реализация | Когда |
 |------------|-------|
-| `InteractiveMatrixSelection` | `main.py run --mode interactive` |
-| `ConfiguredMatrixSelection` | `main.py run --mode scheduled` — имена из `settings.scheduled_matrix_names` или `*` (= все) |
+| `InteractiveMatrixSelection` | `matrix-controller deploy interactive` (см. [cli-typer-questionary-design.md](./2026-06-10-cli-typer-questionary-design.md)) |
+| `ConfiguredMatrixSelection` | `matrix-controller deploy scheduled` — `--names` или `SCHEDULED_MATRIX_NAMES` |
 | `WebhookMatrixSelection` | Заглушка в `interfaces/http/` — парсит payload → names (реализация позже) |
+
+> **Примечание (2026-06-10):** команда `run --mode` удалена; актуальные CLI entry points — в [2026-06-10-cli-typer-questionary-design.md](./2026-06-10-cli-typer-questionary-design.md).
 
 ### JobRun — модель (фаза 1)
 

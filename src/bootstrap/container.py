@@ -29,7 +29,7 @@ from src.infrastructure.persistence.in_memory.product_repository import InMemory
 from src.infrastructure.persistence.in_memory.vending_machine_repository import InMemoryVendingMachineRepository
 from src.infrastructure.selection.configured_selection import ConfiguredMatrixSelection
 from src.infrastructure.selection.interactive_selection import InteractiveMatrixSelection
-from src.infrastructure.selection.interactive_selector import InteractiveSelector
+from src.interfaces.cli.questionary_selector import QuestionarySelector
 
 
 class Container:
@@ -123,7 +123,7 @@ class Container:
 
     def configure_interactive_selection(self) -> None:
         self.set_matrix_selection(
-            InteractiveMatrixSelection(interactive_selector=InteractiveSelector())
+            InteractiveMatrixSelection(selector=QuestionarySelector())
         )
 
     def configure_scheduled_selection(self, names: str) -> None:
