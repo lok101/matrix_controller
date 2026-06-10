@@ -5,7 +5,6 @@ from types import TracebackType
 import gspread
 
 from src.application.use_cases.deploy.deploy_matrices import DeployMatricesUseCase
-from src.application.use_cases.deploy.upload_and_apply_matrix import UploadAndApplyMatrixUseCase
 from src.application.use_cases.orchestration.run_deployment_job import RunDeploymentJobUseCase
 from src.application.use_cases.sync.sync_all_caches import SyncAllCachesUseCase
 from src.application.use_cases.sync.sync_matrices_cache import SyncMatricesCache
@@ -18,13 +17,8 @@ from src.domain.ports.matrix_selection import MatrixSelectionPort
 from src.infrastructure.google_sheets.adapters.get_matrices import GetAllMatricesAdapter
 from src.infrastructure.google_sheets.adapters.get_products import GetAllProductsAdapter
 from src.infrastructure.google_sheets.client import GoogleSheetsAPIClient
-from src.infrastructure.kit_vending.adapters.apply_matrix_to_vending_machine import (
-    ApplyMatrixToVendingMachineAdapter,
-)
 from src.infrastructure.kit_vending.adapters.bind_matrix_to_machine import BindMatrixToVendingMachineAdapter
-from src.infrastructure.kit_vending.adapters.download_matrix_to_vending_machine import (
-    DownloadMatrixToVendingMachineAdapter,
-)
+from src.infrastructure.kit_vending.batch_matrix_deploy_coordinator import BatchMatrixDeployCoordinator
 from src.infrastructure.kit_vending.adapters.get_vending_machines import GetVendingMachinesAdapter
 from src.infrastructure.kit_vending.adapters.upload_matrix import UploadMatrixAdapter
 from src.infrastructure.kit_vending.api.account import KitAPIAccount
@@ -78,27 +72,24 @@ class Container:
 
         upload_matrix = UploadMatrixAdapter(kit_api_client=self._kit_client)
         bind_matrix = BindMatrixToVendingMachineAdapter(kit_api_client=self._kit_client)
-        download_matrix = DownloadMatrixToVendingMachineAdapter(
-            kit_api_client=self._kit_client,
-            matrix_load_timeout=self._settings.matrix_load_timeout,
-        )
-        apply_matrix = ApplyMatrixToVendingMachineAdapter(
-            kit_api_client=self._kit_client,
-            matrix_apply_timeout=self._settings.matrix_apply_timeout,
-        )
 
-        upload_and_apply = UploadAndApplyMatrixUseCase(
+        batch_coordinator = BatchMatrixDeployCoordinator(
+            kit_api_client=self._kit_client,
             upload_matrix_port=upload_matrix,
             bind_matrix_to_machine_port=bind_matrix,
-            download_matrix_to_machine_port=download_matrix,
-            apply_matrix_to_machine_port=apply_matrix,
             validate_matrices=self._settings.validate_matrices,
+            load_timeout_seconds=self._settings.matrix_load_timeout,
+            apply_timeout_seconds=self._settings.matrix_apply_timeout,
+            poll_interval_seconds=self._settings.matrix_status_poll_interval,
+            command_send_delay_seconds=self._settings.matrix_command_send_delay,
+            poll_api_max_retries=self._settings.matrix_poll_api_max_retries,
+            retry_send_command_delay_seconds=self._settings.matrix_retry_send_command_delay,
         )
 
         self._deploy_matrices = DeployMatricesUseCase(
             matrix_repository=self.matrix_repository,
             vending_machine_repository=self.vending_machine_repository,
-            upload_and_apply_matrix_uc=upload_and_apply,
+            batch_deploy_coordinator=batch_coordinator,
         )
 
         self._sync_all = SyncAllCachesUseCase(

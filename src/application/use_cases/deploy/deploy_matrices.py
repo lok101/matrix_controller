@@ -1,16 +1,18 @@
-import asyncio
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 from datetime import datetime
 
 from beartype import beartype
 
-from src.application.use_cases.deploy.upload_and_apply_matrix import UploadAndApplyMatrixUseCase
 from src.domain.entities.vending_machine import VendingMachine
 from src.domain.exceptions import UploadMatrixError
+from src.domain.ports.batch_matrix_deploy import BatchDeployCoordinatorPort
 from src.domain.repositories.matrix_repository import MatrixRepository
 from src.domain.repositories.vending_machine_repository import VendingMachineRepository
 from src.domain.value_objects.ids.vending_machine_id import VMId
+from src.domain.value_objects.matrix_deploy_item import MatrixDeployItem
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 class DeployMatricesUseCase:
     matrix_repository: MatrixRepository
     vending_machine_repository: VendingMachineRepository
-    upload_and_apply_matrix_uc: UploadAndApplyMatrixUseCase
+    batch_deploy_coordinator: BatchDeployCoordinatorPort
 
     async def execute(
         self, selected_matrix_names: list[str], timestamp: datetime
@@ -28,8 +30,7 @@ class DeployMatricesUseCase:
         if not selected_matrix_names:
             raise UploadMatrixError("Не выбрано ни одной матрицы для загрузки")
 
-        tasks = []
-        names: list[str] = []
+        items: list[MatrixDeployItem] = []
         skipped = 0
 
         for name in selected_matrix_names:
@@ -45,24 +46,17 @@ class DeployMatricesUseCase:
                 skipped += 1
                 continue
 
-            tasks.append(self.upload_and_apply_matrix_uc.execute(matrix, machines, timestamp))
-            names.append(name)
+            items.append(MatrixDeployItem(matrix=matrix, machines=machines))
 
-        if not tasks:
+        if not items:
             raise UploadMatrixError("Не удалось создать ни одной задачи для загрузки матриц")
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await self.batch_deploy_coordinator.deploy(items, timestamp)
 
         matrices_success = 0
         matrices_failed = 0
 
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                matrices_failed += 1
-                logger.error("Ошибка при загрузке матрицы '%s': %s", names[i], result)
-                continue
-
-            success_count, failure_count = result
+        for _matrix_name, success_count, failure_count in results:
             if failure_count == 0:
                 matrices_success += 1
             elif success_count == 0:

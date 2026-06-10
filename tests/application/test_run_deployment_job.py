@@ -11,11 +11,11 @@ from src.infrastructure.persistence.in_memory.matrix_repository import InMemoryM
 from src.infrastructure.persistence.in_memory.product_repository import InMemoryProductRepository
 from src.infrastructure.persistence.in_memory.vending_machine_repository import InMemoryVendingMachineRepository
 from tests.application.conftest import (
+    FakeBatchCoordinator,
     FakeDeployMatrices,
     FakeMatricesPort,
     FakeProductsPort,
     FakeSyncAllRaises,
-    FakeUploadAndApply,
     FakeVendingMachinesPort,
     make_matrix,
 )
@@ -46,7 +46,7 @@ def test_run_deployment_job_creates_and_finalizes_job_run():
         return_value=(2, 0, 0),
         matrix_repository=matrix_repo,
         vending_machine_repository=vm_repo,
-        upload_and_apply_matrix_uc=FakeUploadAndApply([(1, 0)]),
+        batch_deploy_coordinator=FakeBatchCoordinator(),
     )
 
     uc = RunDeploymentJobUseCase(
@@ -83,7 +83,7 @@ def test_run_deployment_job_partial_when_matrices_skipped():
         return_value=(1, 0, 1),
         matrix_repository=matrix_repo,
         vending_machine_repository=vm_repo,
-        upload_and_apply_matrix_uc=FakeUploadAndApply([(1, 0)]),
+        batch_deploy_coordinator=FakeBatchCoordinator(),
     )
 
     uc = RunDeploymentJobUseCase(
@@ -117,7 +117,7 @@ def test_run_deployment_job_failed_when_sync_raises():
             return_value=(0, 0, 0),
             matrix_repository=matrix_repo,
             vending_machine_repository=InMemoryVendingMachineRepository(),
-            upload_and_apply_matrix_uc=FakeUploadAndApply([]),
+            batch_deploy_coordinator=FakeBatchCoordinator(),
         ),
     )
 
@@ -146,7 +146,7 @@ def test_run_deployment_job_failed_when_all_matrices_fail():
         return_value=(0, 2, 0),
         matrix_repository=matrix_repo,
         vending_machine_repository=vm_repo,
-        upload_and_apply_matrix_uc=FakeUploadAndApply([]),
+        batch_deploy_coordinator=FakeBatchCoordinator(),
     )
 
     uc = RunDeploymentJobUseCase(
