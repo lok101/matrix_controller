@@ -23,6 +23,7 @@ from src.infrastructure.kit_vending.api.models.vending_machine_state import (
 )
 from src.infrastructure.kit_vending.machine_deploy_task import (
     MachineDeployTask,
+    MachinePollSnapshot,
     is_apply_confirmed,
     is_load_confirmed,
 )
@@ -142,11 +143,11 @@ class BatchMatrixDeployCoordinator(BatchDeployCoordinatorPort):
                 continue
 
             for task in pending:
-                statuses = self._statuses_for_machine(states_map, task.machine.kit_id.value)
+                snapshot = self._poll_snapshot_for_machine(states_map, task.machine.kit_id.value)
                 elapsed = (datetime.now() - task.phase_started_at).total_seconds()
-                status_repr = self._format_statuses(statuses)
+                status_repr = self._format_poll_snapshot(snapshot)
 
-                if is_load_confirmed(statuses):
+                if is_load_confirmed(snapshot):
                     task.phase = "loaded"
                     logger.info(
                         "[%s] load подтверждён за %.0f сек, статусы: %s",
@@ -159,7 +160,8 @@ class BatchMatrixDeployCoordinator(BatchDeployCoordinatorPort):
                 ):
                     pass
                 else:
-                    task.last_seen_statuses = statuses
+                    task.last_seen_in_response = snapshot.found
+                    task.last_seen_statuses = snapshot.statuses
                     logger.debug(
                         "Poll load #%s (%.0fs): [%s]=%s waiting",
                         poll_number,
@@ -206,11 +208,11 @@ class BatchMatrixDeployCoordinator(BatchDeployCoordinatorPort):
                 continue
 
             for task in pending:
-                statuses = self._statuses_for_machine(states_map, task.machine.kit_id.value)
+                snapshot = self._poll_snapshot_for_machine(states_map, task.machine.kit_id.value)
                 elapsed = (datetime.now() - task.phase_started_at).total_seconds()
-                status_repr = self._format_statuses(statuses)
+                status_repr = self._format_poll_snapshot(snapshot)
 
-                if is_apply_confirmed(statuses):
+                if is_apply_confirmed(snapshot):
                     task.phase = "applied"
                     logger.info(
                         "[%s] apply подтверждён за %.0f сек, статусы: %s",
@@ -223,7 +225,8 @@ class BatchMatrixDeployCoordinator(BatchDeployCoordinatorPort):
                 ):
                     pass
                 else:
-                    task.last_seen_statuses = statuses
+                    task.last_seen_in_response = snapshot.found
+                    task.last_seen_statuses = snapshot.statuses
                     logger.debug(
                         "Poll apply #%s (%.0fs): [%s]=%s waiting",
                         poll_number,
@@ -285,16 +288,16 @@ class BatchMatrixDeployCoordinator(BatchDeployCoordinatorPort):
                 )
         return None
 
-    def _statuses_for_machine(
+    def _poll_snapshot_for_machine(
         self,
         states_map: dict[int, VendingMachineStateModel],
         kit_id: int,
-    ) -> list[VendingMachineStatus]:
+    ) -> MachinePollSnapshot:
         machine_state = states_map.get(kit_id)
         if machine_state is None:
-            logger.warning("[%s] not_found в GetVMStates, считаем статус пустым", kit_id)
-            return []
-        return machine_state.statuses
+            logger.warning("[%s] not_found в GetVMStates", kit_id)
+            return MachinePollSnapshot(found=False, statuses=[])
+        return MachinePollSnapshot(found=True, statuses=machine_state.statuses)
 
     def _fail_on_phase_timeout(
         self,
@@ -311,11 +314,11 @@ class BatchMatrixDeployCoordinator(BatchDeployCoordinatorPort):
         task.failure_step = failure_step
         task.failure_message = f"{failure_step} timeout {timeout_seconds} сек"
         logger.warning(
-            "[%s] %s timeout %.0f сек, последние статусы: %s",
+            "[%s] %s timeout %.0f сек, последнее состояние: %s",
             task.machine.kit_id.value,
             failure_step,
             timeout_seconds,
-            status_repr if status_repr is not None else self._format_statuses(task.last_seen_statuses),
+            status_repr if status_repr is not None else self._format_last_seen(task),
         )
         return True
 
@@ -328,6 +331,19 @@ class BatchMatrixDeployCoordinator(BatchDeployCoordinatorPort):
         if not statuses:
             return "[]"
         return "[" + ", ".join(str(s.value) for s in statuses) + "]"
+
+    @staticmethod
+    def _format_poll_snapshot(snapshot: MachinePollSnapshot) -> str:
+        if not snapshot.found:
+            return "not_found"
+        return BatchMatrixDeployCoordinator._format_statuses(snapshot.statuses)
+
+    def _format_last_seen(self, task: MachineDeployTask) -> str:
+        if task.last_seen_in_response is False:
+            return "not_found"
+        if task.last_seen_in_response is None:
+            return "нет данных"
+        return self._format_statuses(task.last_seen_statuses)
 
     def _aggregate_results(
         self,

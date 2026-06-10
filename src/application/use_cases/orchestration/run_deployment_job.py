@@ -55,7 +55,9 @@ class RunDeploymentJobUseCase:
             )
             return failed
 
-        selected_names = self.matrix_selection.select(self.matrix_repository.get_all())
+        selected_names = await self.matrix_selection.select(
+            self.matrix_repository.get_all()
+        )
         if not selected_names:
             return self._finalize(
                 job_run,

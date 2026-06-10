@@ -11,7 +11,7 @@ from src.domain.ports.matrix_selection import MatrixSelectionPort
 class ConfiguredMatrixSelection(MatrixSelectionPort):
     names: str
 
-    def select(self, available: list[Matrix]) -> list[str]:
+    async def select(self, available: list[Matrix]) -> list[str]:
         if self.names.strip() == "*":
             return [m.name for m in available]
         wanted = {n.strip() for n in self.names.split(",") if n.strip()}

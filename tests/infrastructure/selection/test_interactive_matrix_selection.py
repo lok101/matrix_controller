@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
 
 from src.domain.entities.matrix import Matrix
@@ -13,7 +14,7 @@ class FakeSelector:
     last_items: list[tuple[str, str]] = field(default_factory=list)
     return_value: list[str] = field(default_factory=list)
 
-    def select_items(self, items: list[tuple[str, str]]) -> list[str]:
+    async def select_items(self, items: list[tuple[str, str]]) -> list[str]:
         self.last_items = items
         return self.return_value
 
@@ -30,7 +31,7 @@ def test_interactive_matrix_selection_returns_names() -> None:
         Matrix(name="M2", cells=[make_cell()], vending_machines_ids=[]),
     ]
 
-    result = selection.select(matrices)
+    result = asyncio.run(selection.select(matrices))
 
     assert result == ["M1"]
     assert fake.last_items == [

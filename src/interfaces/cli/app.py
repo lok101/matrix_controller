@@ -10,6 +10,7 @@ from src.bootstrap.settings import Settings
 from src.infrastructure.logging import configure_logging
 from src.interfaces.cli.deploy_interactive import deploy_interactive
 from src.interfaces.cli.deploy_scheduled import deploy_scheduled
+from src.interfaces.cli.questionary_selector import InteractiveTerminalRequiredError
 
 app = typer.Typer(no_args_is_help=True)
 deploy_app = typer.Typer(no_args_is_help=True)
@@ -41,7 +42,11 @@ async def _async_main(
             await container.sync_only()
             return 0
         if command == "deploy-interactive":
-            return await deploy_interactive(container)
+            try:
+                return await deploy_interactive(container)
+            except InteractiveTerminalRequiredError as exc:
+                typer.echo(str(exc), err=True)
+                return 2
         if command == "deploy-scheduled":
             names = (
                 scheduled_names

@@ -12,7 +12,7 @@ from src.interfaces.cli.matrix_choice_label import format_matrix_choice_label
 
 @runtime_checkable
 class MatrixItemSelector(Protocol):
-    def select_items(self, items: list[tuple[str, str]]) -> list[str]: ...
+    async def select_items(self, items: list[tuple[str, str]]) -> list[str]: ...
 
 
 @beartype
@@ -20,6 +20,6 @@ class MatrixItemSelector(Protocol):
 class InteractiveMatrixSelection(MatrixSelectionPort):
     selector: MatrixItemSelector
 
-    def select(self, available: list[Matrix]) -> list[str]:
+    async def select(self, available: list[Matrix]) -> list[str]:
         choices = [(format_matrix_choice_label(m), m.name) for m in available]
-        return self.selector.select_items(choices)
+        return await self.selector.select_items(choices)

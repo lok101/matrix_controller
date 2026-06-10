@@ -507,3 +507,79 @@ def test_send_command_no_sleep_after_final_retry_failure(monkeypatch) -> None:
 
     assert result == [("M1", 0, 1)]
     assert sleep_calls.count(10) == 2
+
+
+def test_apply_confirmed_when_machine_in_response_with_empty_statuses() -> None:
+    client = make_kit_client()
+    client = patch_client_method(client, "send_command_to_vending_machine", AsyncMock(return_value=0))
+    client = patch_client_method(
+        client,
+        "get_vending_machine_states",
+        AsyncMock(
+            side_effect=[
+                _states((512, "21")),
+                _states((512, "")),
+            ]
+        ),
+    )
+
+    coordinator = BatchMatrixDeployCoordinator(
+        kit_api_client=client,
+        upload_matrix_port=FakeUploadPort(result=MatrixKitId(42)),
+        bind_matrix_to_machine_port=FakeBindPort(),
+        validate_matrices=False,
+        load_timeout_seconds=300,
+        apply_timeout_seconds=300,
+        poll_interval_seconds=0,
+        command_send_delay_seconds=0,
+        retry_send_command_delay_seconds=0,
+        poll_api_max_retries=3,
+    )
+
+    result = asyncio.run(
+        coordinator.deploy(
+            [MatrixDeployItem(matrix=_make_matrix(), machines=[_make_machine()])],
+            datetime(2026, 6, 10),
+        )
+    )
+
+    assert result == [("M1", 1, 0)]
+
+
+def test_apply_waits_when_machine_not_in_get_vm_states() -> None:
+    client = make_kit_client()
+    client = patch_client_method(client, "send_command_to_vending_machine", AsyncMock(return_value=0))
+    client = patch_client_method(
+        client,
+        "get_vending_machine_states",
+        AsyncMock(
+            side_effect=[
+                _states((512, "21")),
+                _states((505, "1")),
+                _states((512, "")),
+            ]
+        ),
+    )
+
+    coordinator = BatchMatrixDeployCoordinator(
+        kit_api_client=client,
+        upload_matrix_port=FakeUploadPort(result=MatrixKitId(42)),
+        bind_matrix_to_machine_port=FakeBindPort(),
+        validate_matrices=False,
+        load_timeout_seconds=300,
+        apply_timeout_seconds=300,
+        poll_interval_seconds=0,
+        command_send_delay_seconds=0,
+        retry_send_command_delay_seconds=0,
+        poll_api_max_retries=3,
+    )
+
+    result = asyncio.run(
+        coordinator.deploy(
+            [MatrixDeployItem(matrix=_make_matrix(), machines=[_make_machine()])],
+            datetime(2026, 6, 10),
+        )
+    )
+
+    assert result == [("M1", 1, 0)]
+    assert client.get_vending_machine_states.await_count == 3

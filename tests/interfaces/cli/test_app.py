@@ -90,3 +90,22 @@ def test_deploy_scheduled_rejects_empty_names() -> None:
     runner = CliRunner()
     result = runner.invoke(app, ["deploy", "scheduled", "--names", ""])
     assert result.exit_code != 0
+
+
+def test_deploy_interactive_requires_tty(monkeypatch) -> None:
+    monkeypatch.setenv("GOOGLE_SHEETS_MATRIX_TABLE_ID", "sheet-id")
+    monkeypatch.setenv("KIT_API_COMPANY_ID", "1")
+    monkeypatch.setenv("KIT_API_LOGIN", "login")
+    monkeypatch.setenv("KIT_API_PASSWORD", "password")
+
+    monkeypatch.setattr("src.interfaces.cli.app.Settings", _FakeSettings)
+    monkeypatch.setattr("src.interfaces.cli.app.Container", _FakeContainer)
+    monkeypatch.setattr("src.interfaces.cli.app.configure_logging", lambda: None)
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    monkeypatch.setattr("sys.stdout.isatty", lambda: True)
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["deploy", "interactive"])
+
+    assert result.exit_code == 2
+    assert "TTY" in result.stderr

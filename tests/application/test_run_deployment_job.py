@@ -22,7 +22,7 @@ from tests.application.conftest import (
 
 
 class FakeSelection(MatrixSelectionPort):
-    def select(self, available):
+    async def select(self, available):
         return [m.name for m in available]
 
 
