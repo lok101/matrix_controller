@@ -3,8 +3,6 @@ import os
 
 import gspread
 from dotenv import load_dotenv
-from kit_api import KitVendingAPIClient
-from kit_api.client import KitAPIAccount
 
 from src.application.repositories.product_repository import ProductRepository
 from src.application.use_cases.select_and_upload_matrices import SelectAndUploadMatricesUseCase
@@ -22,14 +20,19 @@ from src.domain.ports.get_products import GetAllProductsPort
 from src.domain.ports.upload_machine_matrix import UploadMatrixPort
 from src.infrastructure.adapters.google_sheets.get_matrices import GetAllMatricesAdapter
 from src.infrastructure.adapters.google_sheets.get_products import GetAllProductsAdapter
-from src.infrastructure.adapters.kit_vending.apply_matrix_to_vending_machine import \
-    ApplyMatrixToVendingMachineAdapter
-from src.infrastructure.adapters.kit_vending.bind_matrix_to_machine import BindMatrixToVendingMachineAdapter
-from src.infrastructure.adapters.kit_vending.download_matrix_to_vending_machine import \
-    DownloadMatrixToVendingMachineAdapter
-from src.infrastructure.adapters.kit_vending.upload_matrix import UploadMatrixAdapter
 from src.infrastructure.google_sheets_api_client import GoogleSheetsAPIClient
 from src.infrastructure.interactive_matrices_selector import InteractiveSelector
+from src.infrastructure.kit_vending.adapters.apply_matrix_to_vending_machine import (
+    ApplyMatrixToVendingMachineAdapter,
+)
+from src.infrastructure.kit_vending.adapters.bind_matrix_to_machine import BindMatrixToVendingMachineAdapter
+from src.infrastructure.kit_vending.adapters.download_matrix_to_vending_machine import (
+    DownloadMatrixToVendingMachineAdapter,
+)
+from src.infrastructure.kit_vending.adapters.upload_matrix import UploadMatrixAdapter
+from src.infrastructure.kit_vending.api.account import KitAPIAccount
+from src.infrastructure.kit_vending.api.client import KitVendingAPIClient
+from src.infrastructure.kit_vending.api.config import KitAPIConfig
 from src.infrastructure.logger import configure_logging
 from src.infrastructure.repositories.matrix_repository import InMemoryMatrixRepository
 from src.infrastructure.repositories.product_repository import InMemoryProductRepository
@@ -38,19 +41,16 @@ from src.infrastructure.repositories.vending_machine_repository import InMemoryV
 load_dotenv()
 configure_logging()
 
-kit_company_id = int(os.getenv("KIT_API_COMPANY_ID"))
-kit_login = os.getenv("KIT_API_LOGIN")
-kit_password = os.getenv("KIT_API_PASSWORD")
-
 
 async def main():
+    kit_config = KitAPIConfig.from_env()
     account = KitAPIAccount(
-        login=kit_login,
-        password=kit_password,
-        company_id=kit_company_id
+        login=kit_config.login,
+        password=kit_config.password,
+        company_id=kit_config.company_id,
     )
 
-    async with KitVendingAPIClient(account=account) as kit_api_client:
+    async with KitVendingAPIClient(account=account, config=kit_config) as kit_api_client:
         table_id: str | None = os.getenv("GOOGLE_SHEETS_MATRIX_TABLE_ID")
 
         if table_id is None:
@@ -130,7 +130,6 @@ async def main():
         await sync_matrices_cache_uc.execute()
 
         await controller.run()
-        pass
 
 
 if __name__ == "__main__":

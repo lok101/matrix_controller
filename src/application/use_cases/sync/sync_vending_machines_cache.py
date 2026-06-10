@@ -3,13 +3,16 @@ from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from beartype import beartype
-from kit_api import KitVendingAPIClient, VendingMachinesCollection
-from kit_api.models.vending_machines import ActiveVendingMachineModel
 
 from src.application.exceptions import SynchronizationError
 from src.domain.entites.vending_machine import VendingMachine
 from src.domain.value_objects.ids.vending_machine_id import VMId
 from src.domain.value_objects.ids.vending_machine_kit_id import VMKitId
+from src.infrastructure.kit_vending.api.client import KitVendingAPIClient
+from src.infrastructure.kit_vending.api.models.vending_machines import (
+    ActiveVendingMachineModel,
+    VendingMachinesCollection,
+)
 
 logger = logging.getLogger()
 

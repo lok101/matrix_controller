@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 from datetime import datetime
 
 from beartype import beartype
-from kit_api import KitVendingAPIClient, KitAPIResponseError
 
 from src.domain.entites.matrix import Matrix
 from src.domain.entites.product import Product
 from src.domain.ports.upload_machine_matrix import UploadMatrixPort
 from src.domain.value_objects.ids.matrix_kit_id import MatrixKitId
+from src.infrastructure.kit_vending.api.client import KitVendingAPIClient
+from src.infrastructure.kit_vending.api.exceptions import KitAPIError
 
 logger = logging.getLogger(__name__)
 
@@ -22,28 +25,20 @@ class UploadMatrixAdapter(UploadMatrixPort):
         matrix_name: str = self._get_matrix_kit_name(matrix.name, timestamp)
 
         try:
-            matrix_id: int | None = await self.kit_api_client.create_matrix(
+            matrix_id: int = await self.kit_api_client.create_matrix(
                 matrix_name=matrix_name,
                 positions=[
                     {
                         "line_number": cell.line_number,
                         "price": cell.price.as_ruble(),
                         "product_name": self._get_product_name(cell.product),
-                    } for cell in matrix.cells
-                ]
+                    }
+                    for cell in matrix.cells
+                ],
             )
 
-            if matrix_id is None:
-                logger.error(
-                    f"Не удалось создать матрицу '{matrix_name}'. "
-                    f"API вернул None."
-                )
-                return None
-
-        except KitAPIResponseError as ex:
-            logger.error(
-                f"Ошибка API при создании матрицы '{matrix_name}': {ex}"
-            )
+        except KitAPIError as exc:
+            logger.error("Ошибка API при создании матрицы '%s': %s", matrix_name, exc)
             return None
 
         logger.info(f"Матрица '{matrix_name}' успешно создана с ID: {matrix_id}")
@@ -59,8 +54,8 @@ class UploadMatrixAdapter(UploadMatrixPort):
             if len(text) <= max_length:
                 return text
 
-            _ellipsis: str = "..."
-            cutoff: int = max_length - len(_ellipsis)
-            return text[:cutoff] + _ellipsis
+            ellipsis = "..."
+            cutoff: int = max_length - len(ellipsis)
+            return text[:cutoff] + ellipsis
 
         return shorten(f"{product.id.value} | {product.name}")
