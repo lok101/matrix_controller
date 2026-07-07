@@ -23,3 +23,10 @@ def extract_vending_machine_id(vending_machine_name: str) -> int | None:
     if match:
         return int(match.group(1))
     return None
+
+
+_INACTIVE_VENDING_MACHINE_MARKER = re.compile(r"\[\s*[XХ]\s*\]")
+
+
+def is_vending_machine_inactive(name: str) -> bool:
+    return _INACTIVE_VENDING_MACHINE_MARKER.search(name) is not None

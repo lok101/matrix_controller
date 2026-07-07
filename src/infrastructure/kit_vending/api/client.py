@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
@@ -21,7 +22,6 @@ from src.infrastructure.kit_vending.api.exceptions import (
 from src.infrastructure.kit_vending.api.models.vending_machine_state import VendingMachinesStatesCollection
 from src.infrastructure.kit_vending.api.models.vending_machines import VendingMachinesCollection
 from src.infrastructure.kit_vending.api.rate_limiter import GlobalBackoff, RateLimiter
-from src.infrastructure.kit_vending.api.timestamp import TimestampAPI
 
 
 class KitVendingAPIClient:
@@ -30,10 +30,8 @@ class KitVendingAPIClient:
         self,
         account: KitAPIAccount,
         config: KitAPIConfig,
-        timestamp_provider: TimestampAPI | None = None,
         session: aiohttp.ClientSession | None = None,
     ) -> None:
-        self._timestamp_provider = timestamp_provider or TimestampAPI()
         self._base_url = "https://api2.kit-invest.ru/APIService.svc"
         self._session = session
         self._own_session = session is None
@@ -52,7 +50,7 @@ class KitVendingAPIClient:
         url = f"{self._base_url}/GetVendingMachines"
 
         async def build_data() -> dict[str, Any]:
-            request_id = await self._timestamp_provider.async_get_now()
+            request_id = time.time_ns()
             return {"Auth": self._build_auth(request_id, account)}
 
         response = await self._async_send_post_request(url, build_data)
@@ -66,7 +64,7 @@ class KitVendingAPIClient:
         url = f"{self._base_url}/GetVMStates"
 
         async def build_data() -> dict[str, Any]:
-            request_id = await self._timestamp_provider.async_get_now()
+            request_id = time.time_ns()
             return {"Auth": self._build_auth(request_id, account)}
 
         response = await self._async_send_post_request(url, build_data)
@@ -82,7 +80,7 @@ class KitVendingAPIClient:
         url = f"{self._base_url}/CreatePiecesMatrix"
 
         async def build_data() -> dict[str, Any]:
-            request_id = await self._timestamp_provider.async_get_now()
+            request_id = time.time_ns()
             return {
                 "Auth": self._build_auth(request_id, account),
                 "MatrixName": matrix_name,
@@ -111,7 +109,7 @@ class KitVendingAPIClient:
         url = f"{self._base_url}/ApplyMatrix"
 
         async def build_data() -> dict[str, Any]:
-            request_id = await self._timestamp_provider.async_get_now()
+            request_id = time.time_ns()
             return {
                 "Auth": self._build_auth(request_id, account),
                 "MatrixId": matrix_id,
@@ -131,7 +129,7 @@ class KitVendingAPIClient:
         url = f"{self._base_url}/SendCommand"
 
         async def build_data() -> dict[str, Any]:
-            request_id = await self._timestamp_provider.async_get_now()
+            request_id = time.time_ns()
             return {
                 "Auth": self._build_auth(request_id, account),
                 "Command": {
